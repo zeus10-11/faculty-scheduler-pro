@@ -285,13 +285,14 @@ def schedule_view():
                     st.session_state.faculty_data,
                     st.session_state.subject_data,
                     st.session_state.room_data,
-                    st.session_state.time_data
+                    st.session_state.time_data,
+                    selected_day_view
                 )
                 
                 st.download_button(
                     label="Download PDF",
                     data=pdf_buffer,
-                    file_name=f"schedule_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                    file_name=f"schedule_{selected_day_view}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                     mime="application/pdf"
                 )
             else:

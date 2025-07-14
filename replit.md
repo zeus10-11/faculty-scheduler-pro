@@ -16,7 +16,9 @@ Preferred communication style: Simple, everyday language.
 - Removed manual faculty ID input - now auto-generated for easier use
 - Updated conflict detection to consider days when preventing double booking
 - Enhanced schedule grid with day-specific view selection
-- Updated PDF exports to include day information in schedules
+- Simplified booking form by removing day selector (uses main schedule day selection)
+- Updated PDF exports to only generate timetable for selected day
+- Removed faculty details and subject list sections from PDF exports
 
 ## System Architecture
 

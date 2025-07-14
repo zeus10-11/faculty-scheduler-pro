@@ -37,7 +37,7 @@ class PDFGenerator:
     
     def generate_schedule_pdf(self, schedule_data: Dict[str, Any], faculty_data: List[Dict], 
                             subject_data: List[Dict], room_data: List[Dict], 
-                            time_data: List[Dict]) -> bytes:
+                            time_data: List[Dict], selected_day: str = None) -> bytes:
         """Generate PDF report of the current schedule"""
         
         buffer = io.BytesIO()
@@ -48,7 +48,8 @@ class PDFGenerator:
         story = []
         
         # Title
-        title = Paragraph("Faculty Schedule Report", self.title_style)
+        day_text = f" - {selected_day}" if selected_day else ""
+        title = Paragraph(f"Faculty Schedule{day_text}", self.title_style)
         story.append(title)
         story.append(Spacer(1, 12))
         
@@ -60,34 +61,21 @@ class PDFGenerator:
         story.append(generation_info)
         story.append(Spacer(1, 20))
         
-        # Schedule summary
-        summary_header = Paragraph("Schedule Summary", self.header_style)
-        story.append(summary_header)
-        
-        total_bookings = len(schedule_data)
-        unique_faculty = len(set(booking['faculty_id'] for booking in schedule_data.values()))
-        unique_subjects = len(set(booking['subject_code'] for booking in schedule_data.values()))
-        
-        summary_text = f"""
-        Total Bookings: {total_bookings}<br/>
-        Faculty Involved: {unique_faculty}<br/>
-        Subjects Scheduled: {unique_subjects}<br/>
-        Rooms in Use: {len(set(booking['room_number'] for booking in schedule_data.values()))}
-        """
-        
-        summary_para = Paragraph(summary_text, self.styles['Normal'])
-        story.append(summary_para)
-        story.append(Spacer(1, 20))
-        
         # Schedule table
         if schedule_data:
-            schedule_header = Paragraph("Detailed Schedule", self.header_style)
+            schedule_header = Paragraph("Schedule Timetable", self.header_style)
             story.append(schedule_header)
             
             # Create schedule table
             rooms = sorted(set(room['number'] for room in room_data))
-            time_slots = sorted(set(time['slot'] for time in time_data), 
-                              key=lambda x: x.split(' - ')[0])
+            
+            # Filter time slots for selected day
+            if selected_day:
+                time_slots = sorted([t['slot'] for t in time_data if selected_day in t.get('days', [])], 
+                                  key=lambda x: x.split(' - ')[0])
+            else:
+                time_slots = sorted(set(time['slot'] for time in time_data), 
+                                  key=lambda x: x.split(' - ')[0])
             
             # Table headers
             table_data = [['Time / Room'] + rooms]
@@ -96,21 +84,20 @@ class PDFGenerator:
             for time_slot in time_slots:
                 row = [time_slot]
                 for room in rooms:
-                    # Check for any booking in this time slot and room across all days
                     cell_content = "Available"
-                    bookings_for_slot = []
                     
+                    # Look for booking for this specific day, time, and room
                     for slot_key, booking in schedule_data.items():
-                        if booking['time_slot'] == time_slot and booking['room_number'] == room:
+                        if (booking['time_slot'] == time_slot and 
+                            booking['room_number'] == room and 
+                            (not selected_day or booking.get('day') == selected_day)):
+                            
                             faculty = next((f for f in faculty_data if f['id'] == booking['faculty_id']), None)
                             subject = next((s for s in subject_data if s['code'] == booking['subject_code']), None)
                             
                             if faculty and subject:
-                                day_info = f" ({booking.get('day', 'N/A')})" if booking.get('day') else ""
-                                bookings_for_slot.append(f"{faculty['name']}\n{subject['name']}{day_info}")
-                    
-                    if bookings_for_slot:
-                        cell_content = "\n---\n".join(bookings_for_slot)
+                                cell_content = f"{faculty['name']}\n{subject['name']}"
+                                break
                     
                     row.append(cell_content)
                 table_data.append(row)
@@ -134,64 +121,6 @@ class PDFGenerator:
             ]))
             
             story.append(table)
-            story.append(Spacer(1, 20))
-        
-        # Faculty list
-        if faculty_data:
-            faculty_header = Paragraph("Faculty List", self.header_style)
-            story.append(faculty_header)
-            
-            faculty_table_data = [['Name', 'Department', 'Email']]
-            for faculty in faculty_data:
-                faculty_table_data.append([
-                    faculty['name'],
-                    faculty.get('department', 'N/A'),
-                    faculty.get('email', 'N/A')
-                ])
-            
-            faculty_table = Table(faculty_table_data, colWidths=[2*inch, 2*inch, 2*inch])
-            faculty_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ]))
-            
-            story.append(faculty_table)
-            story.append(Spacer(1, 20))
-        
-        # Subject list
-        if subject_data:
-            subject_header = Paragraph("Subject List", self.header_style)
-            story.append(subject_header)
-            
-            subject_table_data = [['Subject Code', 'Subject Name', 'Department']]
-            for subject in subject_data:
-                subject_table_data.append([
-                    subject['code'],
-                    subject['name'],
-                    subject.get('department', 'N/A')
-                ])
-            
-            subject_table = Table(subject_table_data, colWidths=[1.5*inch, 3*inch, 1.5*inch])
-            subject_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ]))
-            
-            story.append(subject_table)
         
         # Build PDF
         doc.build(story)
