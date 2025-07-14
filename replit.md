@@ -8,6 +8,16 @@ This is a Streamlit-based Faculty Scheduling System designed to manage faculty a
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### December 2024
+- Added day management to time periods (days of the week selection)
+- Removed credits field from subject management for simplified interface
+- Removed manual faculty ID input - now auto-generated for easier use
+- Updated conflict detection to consider days when preventing double booking
+- Enhanced schedule grid with day-specific view selection
+- Updated PDF exports to include day information in schedules
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -48,11 +58,11 @@ Preferred communication style: Simple, everyday language.
    - Handles custom styling and layout
 
 ### Data Models
-- **Faculty**: ID, name, department, photo (optional)
+- **Faculty**: Auto-generated ID, name, department, email, phone, photo (optional)
 - **Rooms**: Room number, capacity, equipment
-- **Time Periods**: Time slots for scheduling
-- **Subjects**: Subject codes and details
-- **Schedule**: Time slot assignments linking faculty, rooms, and subjects
+- **Time Periods**: Time slots with associated days of the week
+- **Subjects**: Subject codes, names, and departments
+- **Schedule**: Time slot assignments linking faculty, rooms, subjects, and specific days
 
 ## Data Flow
 

@@ -141,15 +141,15 @@ class PDFGenerator:
             faculty_header = Paragraph("Faculty List", self.header_style)
             story.append(faculty_header)
             
-            faculty_table_data = [['Faculty ID', 'Name', 'Department']]
+            faculty_table_data = [['Name', 'Department', 'Email']]
             for faculty in faculty_data:
                 faculty_table_data.append([
-                    faculty['id'],
                     faculty['name'],
-                    faculty.get('department', 'N/A')
+                    faculty.get('department', 'N/A'),
+                    faculty.get('email', 'N/A')
                 ])
             
-            faculty_table = Table(faculty_table_data, colWidths=[1.5*inch, 2*inch, 2*inch])
+            faculty_table = Table(faculty_table_data, colWidths=[2*inch, 2*inch, 2*inch])
             faculty_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -170,15 +170,15 @@ class PDFGenerator:
             subject_header = Paragraph("Subject List", self.header_style)
             story.append(subject_header)
             
-            subject_table_data = [['Subject Code', 'Subject Name', 'Credits']]
+            subject_table_data = [['Subject Code', 'Subject Name', 'Department']]
             for subject in subject_data:
                 subject_table_data.append([
                     subject['code'],
                     subject['name'],
-                    str(subject['credits'])
+                    subject.get('department', 'N/A')
                 ])
             
-            subject_table = Table(subject_table_data, colWidths=[1.5*inch, 3*inch, 1*inch])
+            subject_table = Table(subject_table_data, colWidths=[1.5*inch, 3*inch, 1.5*inch])
             subject_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),

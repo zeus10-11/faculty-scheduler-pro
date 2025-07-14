@@ -45,7 +45,6 @@ def faculty_management():
     
     with col1:
         st.subheader("Add New Faculty")
-        faculty_id = st.text_input("Faculty ID", placeholder="e.g., FAC001")
         faculty_name = st.text_input("Faculty Name", placeholder="e.g., Dr. John Smith")
         department = st.text_input("Department", placeholder="e.g., Computer Science")
         email = st.text_input("Email", placeholder="e.g., john.smith@university.edu")
@@ -54,10 +53,14 @@ def faculty_management():
         uploaded_photo = st.file_uploader("Upload Faculty Photo", type=['png', 'jpg', 'jpeg'])
         
         if st.button("Add Faculty", type="primary"):
-            if faculty_id and faculty_name:
+            if faculty_name:
                 photo_data = None
                 if uploaded_photo:
                     photo_data = uploaded_photo.read()
+                
+                # Generate a unique ID based on name and timestamp
+                import time
+                faculty_id = f"FAC_{int(time.time())}"
                 
                 new_faculty = {
                     'id': faculty_id,
@@ -68,21 +71,18 @@ def faculty_management():
                     'photo': photo_data
                 }
                 
-                if faculty_id not in [f['id'] for f in st.session_state.faculty_data]:
-                    st.session_state.faculty_data.append(new_faculty)
-                    data_manager.save_faculty_data(st.session_state.faculty_data)
-                    st.success("Faculty added successfully!")
-                    st.rerun()
-                else:
-                    st.error("Faculty ID already exists!")
+                st.session_state.faculty_data.append(new_faculty)
+                data_manager.save_faculty_data(st.session_state.faculty_data)
+                st.success("Faculty added successfully!")
+                st.rerun()
             else:
-                st.error("Please fill in required fields (Faculty ID and Name)")
+                st.error("Please fill in faculty name")
     
     with col2:
         st.subheader("Existing Faculty")
         if st.session_state.faculty_data:
             for faculty in st.session_state.faculty_data:
-                with st.expander(f"{faculty['name']} ({faculty['id']})"):
+                with st.expander(f"{faculty['name']}"):
                     col_info, col_photo = st.columns([2, 1])
                     
                     with col_info:
@@ -228,7 +228,6 @@ def subject_management():
         st.subheader("Add New Subject")
         subject_code = st.text_input("Subject Code", placeholder="e.g., CS101")
         subject_name = st.text_input("Subject Name", placeholder="e.g., Introduction to Programming")
-        credits = st.number_input("Credits", min_value=1, value=3)
         department = st.text_input("Department", placeholder="e.g., Computer Science")
         
         if st.button("Add Subject", type="primary"):
@@ -236,7 +235,6 @@ def subject_management():
                 new_subject = {
                     'code': subject_code,
                     'name': subject_name,
-                    'credits': credits,
                     'department': department
                 }
                 
@@ -255,7 +253,6 @@ def subject_management():
         if st.session_state.subject_data:
             for subject in st.session_state.subject_data:
                 with st.expander(f"{subject['name']} ({subject['code']})"):
-                    st.write(f"**Credits:** {subject['credits']}")
                     st.write(f"**Department:** {subject.get('department', 'N/A')}")
                     
                     if st.button(f"Delete {subject['code']}", key=f"del_subj_{subject['code']}"):
