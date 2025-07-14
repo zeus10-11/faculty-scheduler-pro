@@ -266,6 +266,15 @@ def subject_management():
 def schedule_view():
     st.header("📅 Schedule Management")
     
+    # Day selection for viewing - moved to top
+    selected_day_view = "Monday"  # Default value
+    if st.session_state.room_data and st.session_state.time_data:
+        all_days = set()
+        for time_slot in st.session_state.time_data:
+            all_days.update(time_slot.get('days', ['Monday']))
+        
+        selected_day_view = st.selectbox("Select Day to View", sorted(all_days), key="day_view")
+    
     # Control buttons
     col1, col2, col3 = st.columns([1, 1, 1])
     
@@ -304,13 +313,6 @@ def schedule_view():
     # Schedule Grid
     if st.session_state.room_data and st.session_state.time_data:
         st.subheader("📋 Schedule Grid")
-        
-        # Day selection for viewing
-        all_days = set()
-        for time_slot in st.session_state.time_data:
-            all_days.update(time_slot.get('days', ['Monday']))
-        
-        selected_day_view = st.selectbox("Select Day to View", sorted(all_days), key="day_view")
         
         # Create grid layout
         rooms = sorted(st.session_state.room_data, key=lambda x: x['number'])
