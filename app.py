@@ -380,19 +380,12 @@ def schedule_view():
             slot_key = st.session_state.get('booking_slot')
             time_slot, room_number = slot_key.split('_')
             
-            # Find the time period data for this slot
-            time_period = next((t for t in st.session_state.time_data if t['slot'] == time_slot), None)
-            available_days = time_period.get('days', ['Monday']) if time_period else ['Monday']
-            
             st.write(f"**Booking for:** {time_slot} in Room {room_number}")
-            st.write(f"**Available Days:** {', '.join(available_days)}")
+            st.write(f"**Day:** {selected_day_view}")
             
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             
             with col1:
-                selected_day = st.selectbox("Select Day", available_days)
-            
-            with col2:
                 faculty_options = [(f['id'], f['name']) for f in st.session_state.faculty_data]
                 selected_faculty = st.selectbox(
                     "Select Faculty",
@@ -400,7 +393,7 @@ def schedule_view():
                     format_func=lambda x: next(f[1] for f in faculty_options if f[0] == x)
                 )
             
-            with col3:
+            with col2:
                 subject_options = [(s['code'], s['name']) for s in st.session_state.subject_data]
                 selected_subject = st.selectbox(
                     "Select Subject",
@@ -415,20 +408,20 @@ def schedule_view():
                     conflict_detector = ConflictDetector()
                     conflicts = conflict_detector.check_conflicts(
                         time_slot, room_number, selected_faculty, selected_subject,
-                        st.session_state.schedule_data, selected_day
+                        st.session_state.schedule_data, selected_day_view
                     )
                     
                     if conflicts:
                         st.error(f"⚠️ Booking conflict detected: {conflicts}")
                     else:
                         # Create a unique key that includes the day
-                        day_slot_key = f"{time_slot}_{room_number}_{selected_day}"
+                        day_slot_key = f"{time_slot}_{room_number}_{selected_day_view}"
                         st.session_state.schedule_data[day_slot_key] = {
                             'faculty_id': selected_faculty,
                             'subject_code': selected_subject,
                             'time_slot': time_slot,
                             'room_number': room_number,
-                            'day': selected_day
+                            'day': selected_day_view
                         }
                         data_manager.save_schedule_data(st.session_state.schedule_data)
                         st.session_state.show_booking_form = False

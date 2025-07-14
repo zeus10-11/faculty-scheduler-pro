@@ -1,1 +1,16 @@
-{}
+{
+  "00:00 - 00:45_101_Monday": {
+    "faculty_id": "FAC_1752515334",
+    "subject_code": "400",
+    "time_slot": "00:00 - 00:45",
+    "room_number": "101",
+    "day": "Monday"
+  },
+  "00:45 - 01:30_101_Monday": {
+    "faculty_id": "FAC_1752515334",
+    "subject_code": "400",
+    "time_slot": "00:45 - 01:30",
+    "room_number": "101",
+    "day": "Monday"
+  }
+}
