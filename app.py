@@ -163,25 +163,37 @@ def time_management():
     
     with col1:
         st.subheader("Add New Time Period")
+        
+        # Day selection
+        days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        selected_days = st.multiselect("Select Days", days_of_week, default=['Monday'])
+        
         start_time = st.time_input("Start Time")
         end_time = st.time_input("End Time")
         
         if st.button("Add Time Period", type="primary"):
-            if start_time < end_time:
+            if start_time < end_time and selected_days:
                 time_slot = f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
                 
-                if time_slot not in [t['slot'] for t in st.session_state.time_data]:
+                # Check if this time slot with these days already exists
+                existing_slots = [t for t in st.session_state.time_data 
+                                if t['slot'] == time_slot and set(t['days']) == set(selected_days)]
+                
+                if not existing_slots:
                     new_time = {
                         'slot': time_slot,
                         'start': start_time.strftime('%H:%M'),
-                        'end': end_time.strftime('%H:%M')
+                        'end': end_time.strftime('%H:%M'),
+                        'days': selected_days
                     }
                     st.session_state.time_data.append(new_time)
                     data_manager.save_time_data(st.session_state.time_data)
                     st.success("Time period added successfully!")
                     st.rerun()
                 else:
-                    st.error("Time period already exists!")
+                    st.error("Time period with these days already exists!")
+            elif not selected_days:
+                st.error("Please select at least one day")
             else:
                 st.error("End time must be after start time")
     
@@ -189,12 +201,18 @@ def time_management():
         st.subheader("Existing Time Periods")
         if st.session_state.time_data:
             for time_slot in st.session_state.time_data:
-                with st.expander(f"Time: {time_slot['slot']}"):
+                days_str = ', '.join(time_slot.get('days', ['N/A']))
+                with st.expander(f"Time: {time_slot['slot']} ({days_str})"):
                     st.write(f"**Start:** {time_slot['start']}")
                     st.write(f"**End:** {time_slot['end']}")
+                    st.write(f"**Days:** {days_str}")
                     
-                    if st.button(f"Delete {time_slot['slot']}", key=f"del_time_{time_slot['slot']}"):
-                        st.session_state.time_data = [t for t in st.session_state.time_data if t['slot'] != time_slot['slot']]
+                    unique_key = f"{time_slot['slot']}_{hash(tuple(time_slot.get('days', [])))}"
+                    if st.button(f"Delete {time_slot['slot']}", key=f"del_time_{unique_key}"):
+                        st.session_state.time_data = [t for t in st.session_state.time_data if not (
+                            t['slot'] == time_slot['slot'] and 
+                            set(t.get('days', [])) == set(time_slot.get('days', []))
+                        )]
                         data_manager.save_time_data(st.session_state.time_data)
                         st.success("Time period deleted successfully!")
                         st.rerun()
@@ -289,9 +307,16 @@ def schedule_view():
     if st.session_state.room_data and st.session_state.time_data:
         st.subheader("📋 Schedule Grid")
         
+        # Day selection for viewing
+        all_days = set()
+        for time_slot in st.session_state.time_data:
+            all_days.update(time_slot.get('days', ['Monday']))
+        
+        selected_day_view = st.selectbox("Select Day to View", sorted(all_days), key="day_view")
+        
         # Create grid layout
         rooms = sorted(st.session_state.room_data, key=lambda x: x['number'])
-        time_slots = sorted(st.session_state.time_data, key=lambda x: x['start'])
+        time_slots = sorted([t for t in st.session_state.time_data if selected_day_view in t.get('days', ['Monday'])], key=lambda x: x['start'])
         
         # Header row
         header_cols = st.columns([1.5] + [2] * len(rooms))
@@ -302,20 +327,22 @@ def schedule_view():
             with header_cols[i + 1]:
                 st.write(f"**{room['number']}**")
         
-        # Time slot rows
+        # Time slot rows for selected day
         for time_slot in time_slots:
             row_cols = st.columns([1.5] + [2] * len(rooms))
             
             with row_cols[0]:
                 st.write(f"**{time_slot['slot']}**")
+                st.write(f"*{selected_day_view}*")
             
             for i, room in enumerate(rooms):
                 with row_cols[i + 1]:
                     slot_key = f"{time_slot['slot']}_{room['number']}"
+                    day_slot_key = f"{time_slot['slot']}_{room['number']}_{selected_day_view}"
                     
-                    if slot_key in st.session_state.schedule_data:
+                    if day_slot_key in st.session_state.schedule_data:
                         # Show booked slot
-                        booking = st.session_state.schedule_data[slot_key]
+                        booking = st.session_state.schedule_data[day_slot_key]
                         faculty = next((f for f in st.session_state.faculty_data if f['id'] == booking['faculty_id']), None)
                         subject = next((s for s in st.session_state.subject_data if s['code'] == booking['subject_code']), None)
                         
@@ -332,9 +359,10 @@ def schedule_view():
                             
                             st.write(f"**{faculty['name']}**")
                             st.write(f"{subject['name']}")
+                            st.write(f"*{booking['day']}*")
                             
-                            if st.button("❌", key=f"remove_{slot_key}"):
-                                del st.session_state.schedule_data[slot_key]
+                            if st.button("❌", key=f"remove_{day_slot_key}"):
+                                del st.session_state.schedule_data[day_slot_key]
                                 data_manager.save_schedule_data(st.session_state.schedule_data)
                                 st.rerun()
                     else:
@@ -355,11 +383,19 @@ def schedule_view():
             slot_key = st.session_state.get('booking_slot')
             time_slot, room_number = slot_key.split('_')
             
-            st.write(f"**Booking for:** {time_slot} in Room {room_number}")
+            # Find the time period data for this slot
+            time_period = next((t for t in st.session_state.time_data if t['slot'] == time_slot), None)
+            available_days = time_period.get('days', ['Monday']) if time_period else ['Monday']
             
-            col1, col2 = st.columns(2)
+            st.write(f"**Booking for:** {time_slot} in Room {room_number}")
+            st.write(f"**Available Days:** {', '.join(available_days)}")
+            
+            col1, col2, col3 = st.columns(3)
             
             with col1:
+                selected_day = st.selectbox("Select Day", available_days)
+            
+            with col2:
                 faculty_options = [(f['id'], f['name']) for f in st.session_state.faculty_data]
                 selected_faculty = st.selectbox(
                     "Select Faculty",
@@ -367,7 +403,7 @@ def schedule_view():
                     format_func=lambda x: next(f[1] for f in faculty_options if f[0] == x)
                 )
             
-            with col2:
+            with col3:
                 subject_options = [(s['code'], s['name']) for s in st.session_state.subject_data]
                 selected_subject = st.selectbox(
                     "Select Subject",
@@ -382,17 +418,20 @@ def schedule_view():
                     conflict_detector = ConflictDetector()
                     conflicts = conflict_detector.check_conflicts(
                         time_slot, room_number, selected_faculty, selected_subject,
-                        st.session_state.schedule_data
+                        st.session_state.schedule_data, selected_day
                     )
                     
                     if conflicts:
                         st.error(f"⚠️ Booking conflict detected: {conflicts}")
                     else:
-                        st.session_state.schedule_data[slot_key] = {
+                        # Create a unique key that includes the day
+                        day_slot_key = f"{time_slot}_{room_number}_{selected_day}"
+                        st.session_state.schedule_data[day_slot_key] = {
                             'faculty_id': selected_faculty,
                             'subject_code': selected_subject,
                             'time_slot': time_slot,
-                            'room_number': room_number
+                            'room_number': room_number,
+                            'day': selected_day
                         }
                         data_manager.save_schedule_data(st.session_state.schedule_data)
                         st.session_state.show_booking_form = False

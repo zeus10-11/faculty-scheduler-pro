@@ -7,7 +7,7 @@ class ConflictDetector:
         pass
     
     def check_conflicts(self, time_slot: str, room_number: str, faculty_id: str, 
-                       subject_code: str, schedule_data: Dict[str, Dict]) -> Optional[str]:
+                       subject_code: str, schedule_data: Dict[str, Dict], day: str = None) -> Optional[str]:
         """
         Check for scheduling conflicts
         
@@ -17,6 +17,7 @@ class ConflictDetector:
             faculty_id: Faculty ID for the booking
             subject_code: Subject code for the booking
             schedule_data: Current schedule data
+            day: Day for the booking (optional)
             
         Returns:
             Conflict message if conflict exists, None otherwise
@@ -25,17 +26,17 @@ class ConflictDetector:
         conflicts = []
         
         # Check for faculty double booking
-        faculty_conflict = self.check_faculty_conflict(time_slot, faculty_id, schedule_data)
+        faculty_conflict = self.check_faculty_conflict(time_slot, faculty_id, schedule_data, day)
         if faculty_conflict:
             conflicts.append(faculty_conflict)
         
         # Check for subject double booking
-        subject_conflict = self.check_subject_conflict(time_slot, subject_code, schedule_data)
+        subject_conflict = self.check_subject_conflict(time_slot, subject_code, schedule_data, day)
         if subject_conflict:
             conflicts.append(subject_conflict)
         
         # Check for room double booking
-        room_conflict = self.check_room_conflict(time_slot, room_number, schedule_data)
+        room_conflict = self.check_room_conflict(time_slot, room_number, schedule_data, day)
         if room_conflict:
             conflicts.append(room_conflict)
         
@@ -45,32 +46,49 @@ class ConflictDetector:
         return None
     
     def check_faculty_conflict(self, time_slot: str, faculty_id: str, 
-                             schedule_data: Dict[str, Dict]) -> Optional[str]:
+                             schedule_data: Dict[str, Dict], day: str = None) -> Optional[str]:
         """Check if faculty is already scheduled at the given time slot"""
         
         for slot_key, booking in schedule_data.items():
             if booking['faculty_id'] == faculty_id and booking['time_slot'] == time_slot:
-                return f"Faculty is already scheduled at {time_slot} in room {booking['room_number']}"
+                # If day is specified, check if it matches
+                if day and booking.get('day') and booking['day'] == day:
+                    return f"Faculty is already scheduled at {time_slot} on {day} in room {booking['room_number']}"
+                # If no day specified or booking has no day, consider it a conflict
+                elif not day or not booking.get('day'):
+                    return f"Faculty is already scheduled at {time_slot} in room {booking['room_number']}"
         
         return None
     
     def check_subject_conflict(self, time_slot: str, subject_code: str, 
-                             schedule_data: Dict[str, Dict]) -> Optional[str]:
+                             schedule_data: Dict[str, Dict], day: str = None) -> Optional[str]:
         """Check if subject is already scheduled at the given time slot"""
         
         for slot_key, booking in schedule_data.items():
             if booking['subject_code'] == subject_code and booking['time_slot'] == time_slot:
-                return f"Subject is already scheduled at {time_slot} in room {booking['room_number']}"
+                # If day is specified, check if it matches
+                if day and booking.get('day') and booking['day'] == day:
+                    return f"Subject is already scheduled at {time_slot} on {day} in room {booking['room_number']}"
+                # If no day specified or booking has no day, consider it a conflict
+                elif not day or not booking.get('day'):
+                    return f"Subject is already scheduled at {time_slot} in room {booking['room_number']}"
         
         return None
     
     def check_room_conflict(self, time_slot: str, room_number: str, 
-                          schedule_data: Dict[str, Dict]) -> Optional[str]:
+                          schedule_data: Dict[str, Dict], day: str = None) -> Optional[str]:
         """Check if room is already booked at the given time slot"""
         
-        slot_key = f"{time_slot}_{room_number}"
-        if slot_key in schedule_data:
-            return f"Room {room_number} is already booked at {time_slot}"
+        if day:
+            # Check for day-specific room booking
+            day_slot_key = f"{time_slot}_{room_number}_{day}"
+            if day_slot_key in schedule_data:
+                return f"Room {room_number} is already booked at {time_slot} on {day}"
+        else:
+            # Check for any booking in this time slot and room
+            slot_key = f"{time_slot}_{room_number}"
+            if slot_key in schedule_data:
+                return f"Room {room_number} is already booked at {time_slot}"
         
         return None
     

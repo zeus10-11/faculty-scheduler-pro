@@ -63,7 +63,12 @@ class DataManager:
         """Load time period data from local storage"""
         try:
             with open(os.path.join(self.data_dir, 'time_periods.json'), 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                # Migration: add 'days' field if it doesn't exist
+                for time_period in data:
+                    if 'days' not in time_period:
+                        time_period['days'] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+                return data
         except FileNotFoundError:
             return []
     

@@ -96,20 +96,21 @@ class PDFGenerator:
             for time_slot in time_slots:
                 row = [time_slot]
                 for room in rooms:
-                    slot_key = f"{time_slot}_{room}"
-                    if slot_key in schedule_data:
-                        booking = schedule_data[slot_key]
-                        
-                        # Find faculty and subject details
-                        faculty = next((f for f in faculty_data if f['id'] == booking['faculty_id']), None)
-                        subject = next((s for s in subject_data if s['code'] == booking['subject_code']), None)
-                        
-                        if faculty and subject:
-                            cell_content = f"{faculty['name']}\n{subject['name']}"
-                        else:
-                            cell_content = "Unknown"
-                    else:
-                        cell_content = "Available"
+                    # Check for any booking in this time slot and room across all days
+                    cell_content = "Available"
+                    bookings_for_slot = []
+                    
+                    for slot_key, booking in schedule_data.items():
+                        if booking['time_slot'] == time_slot and booking['room_number'] == room:
+                            faculty = next((f for f in faculty_data if f['id'] == booking['faculty_id']), None)
+                            subject = next((s for s in subject_data if s['code'] == booking['subject_code']), None)
+                            
+                            if faculty and subject:
+                                day_info = f" ({booking.get('day', 'N/A')})" if booking.get('day') else ""
+                                bookings_for_slot.append(f"{faculty['name']}\n{subject['name']}{day_info}")
+                    
+                    if bookings_for_slot:
+                        cell_content = "\n---\n".join(bookings_for_slot)
                     
                     row.append(cell_content)
                 table_data.append(row)
